@@ -27,6 +27,7 @@ router.post('/', async (req, res) => {
     const payload = {
       user: {
         id: user.id,
+        name: user.name, // Add the username to the payload
       },
     };
 
@@ -36,7 +37,14 @@ router.post('/', async (req, res) => {
       { expiresIn: 360000 },
       (err, token) => {
         if (err) throw err;
-        res.json({ token });
+        res.json({
+          token,
+          user: {
+            id: user.id,
+            name: user.name,
+            apikey: user.apiKey,
+          },
+        });
       }
     );
   } catch (err) {

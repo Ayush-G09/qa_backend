@@ -18,7 +18,9 @@ app.use(cors());
 app.use('/api/users', require('./routes/users'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/upload', require('./routes/upload'));
-app.use('/api/qa', require('./routes/qa'));
+app.use('/api/question', require('./routes/question'));
+app.use('/api/user', require('./routes/user'));
+app.use('/api/conversation', require('./routes/conversations'));
 
 const PORT = process.env.PORT || 5000;
 

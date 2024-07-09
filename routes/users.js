@@ -6,7 +6,7 @@ const User = require('../models/User');
 const router = express.Router();
 
 // @route    POST api/users
-// @desc     Register user
+// @desc     Register user with API key
 // @access   Public
 router.post('/', async (req, res) => {
   const { name, email, password } = req.body;
@@ -18,17 +18,22 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ msg: 'User already exists' });
     }
 
+    // Initialize user with name, email, password, and apiKey
     user = new User({
       name,
       email,
       password,
+      apiKey: '', // Initialize apiKey as an empty string
     });
 
+    // Hash password
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(password, salt);
 
+    // Save user to database
     await user.save();
 
+    // Generate JWT token
     const payload = {
       user: {
         id: user.id,
@@ -37,7 +42,7 @@ router.post('/', async (req, res) => {
 
     jwt.sign(
       payload,
-      'your_jwt_secret',
+      'your_jwt_secret', // Replace with your actual JWT secret
       { expiresIn: 360000 },
       (err, token) => {
         if (err) throw err;

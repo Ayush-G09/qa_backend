@@ -1,50 +1,67 @@
-const express = require('express');
-const multer = require('multer');
-const auth = require('../middleware/auth');
-const fs = require('fs');
-const path = require('path');
-const { spawn } = require('child_process');
+const express = require("express");
+const auth = require("../middleware/auth");
+const User = require("../models/User");
 
 const router = express.Router();
 
-const storage = multer.diskStorage({
-  destination: './uploads',
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
-});
+router.post("/", auth, async (req, res) => {
+  const { conversationId, fileName } = req.body;
 
-const upload = multer({ storage });
+  console.log(req.body)
 
-// @route    POST api/upload
-// @desc     Upload file and extract content
-// @access   Private
-router.post('/', [auth, upload.single('file')], (req, res) => {
-  const filePath = path.join(__dirname, '../uploads', req.file.filename);
+  try {
+    // Find the user by ID
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
 
-  let extractScript;
-  if (req.file.mimetype === 'application/pdf') {
-    extractScript = path.join(__dirname, '../scripts/extract_pdf.py');
-  } else if (req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-    extractScript = path.join(__dirname, '../scripts/extract_word.py');
-  } else if (req.file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
-    extractScript = path.join(__dirname, '../scripts/extract_excel.py');
-  } else if (req.file.mimetype === 'text/plain') {
-    extractScript = path.join(__dirname, '../scripts/extract_txt.py');
-  } else {
-    return res.status(400).send('Unsupported file type');
+    if (!user.apiKey) {
+        return res.status(400).json({ msg: 'No API key found. Please provide an API key first.' });
+    }
+
+    let newConversationId = conversationId;
+
+    // If conversationId is null or 'NewConversation', create a new conversation
+    if (conversationId === '' || conversationId === "NewConversation") {
+      const newConversation = {
+        file: {
+          name: fileName,
+          embeddingsCreated: false,
+        },
+        chat: [],
+        name: fileName, // Use provided name or default
+      };
+      user.conversations.push(newConversation);
+      await user.save(); // Save the user document to generate _id
+
+      // Fetch the newly added conversation from the user's conversations array
+      const addedConversation =
+        user.conversations[user.conversations.length - 1];
+      newConversationId = addedConversation._id; // Use the new conversation's ID
+    } else {
+      // Update existing conversation with new file data and optionally name
+      const conversation = user.conversations.id(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ msg: "Conversation not found" });
+      }
+      conversation.file.name = fileName;
+      await user.save(); // Save the updated user document
+    }
+
+    // Fetch updated user data to include updated conversations
+    const updatedUser = await User.findById(req.user.id);
+
+    // Respond with success message and updated conversations
+    res.json({
+      msg: "File name updated successfully",
+      conversationId: newConversationId,
+      conversations: updatedUser.conversations,
+    });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server error");
   }
-
-  const process = spawn('python', [extractScript, filePath]);
-
-  process.stdout.on('data', (data) => {
-    res.json({ content: data.toString() });
-  });
-
-  process.stderr.on('data', (data) => {
-    console.error(`stderr: ${data}`);
-    res.status(500).send('Error extracting file content');
-  });
 });
 
 module.exports = router;
