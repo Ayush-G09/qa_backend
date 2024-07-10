@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const ChatSchema = new mongoose.Schema({
   from: {
     type: String,
-    enum: ['user', 'backend'],
+    enum: ['user', 'assistant'],
     required: true,
   },
   data: {
@@ -16,12 +16,12 @@ const ConversationSchema = new mongoose.Schema({
   file: {
     name: {
       type: String,
-      required: true,
+      required: false,
     },
     embeddingsCreated: {
       type: Boolean,
       required: true,
-    }
+    },
   },
   chat: [ChatSchema],
   name: String,
