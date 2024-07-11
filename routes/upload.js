@@ -36,7 +36,7 @@ router.post("/", auth, async (req, res) => {
           embeddingsCreated: false,
         },
         chat: [],
-        name: fileName, // Use provided name or default
+        name: '', // Use provided name or default
       };
       user.conversations.push(newConversation);
       await user.save(); // Save the user document to generate _id
@@ -91,7 +91,7 @@ router.put("/fileName", auth, async (req, res) => {
         embeddingsCreated: conversation.file.embeddingsCreated,
       },
       chat: conversation.chat, // Preserve existing chat messages
-      name: conversation.name || newName, // Preserve existing name or use new name
+      name: conversation.name, // Preserve existing name or use new name
     };
 
     user.conversations.push(newConversation);
@@ -128,5 +128,40 @@ router.put("/fileName", auth, async (req, res) => {
   }
 });
 
+router.put("/conversationName", auth, async (req, res) => {
+  const { conversationId, newName } = req.body;
+
+  try {
+    // Find the user by ID
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Find the conversation by conversationId
+    const conversation = user.conversations.id(conversationId);
+    if (!conversation) {
+      return res.status(404).json({ msg: "Conversation not found" });
+    }
+
+    // Update the conversation name
+    conversation.name = newName;
+
+    // Save the user document with the updated conversation name
+    await user.save();
+
+    // Fetch updated user data to include updated conversations
+    const updatedUser = await User.findById(req.user.id);
+
+    // Respond with success message and updated conversations
+    res.json({
+      msg: "Conversation name updated successfully",
+      conversations: updatedUser.conversations,
+    });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server error");
+  }
+});
 
 module.exports = router;
