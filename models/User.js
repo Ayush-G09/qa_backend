@@ -18,10 +18,6 @@ const ConversationSchema = new mongoose.Schema({
       type: String,
       required: false,
     },
-    embeddingsCreated: {
-      type: Boolean,
-      required: true,
-    },
   },
   chat: [ChatSchema],
   name: String,
